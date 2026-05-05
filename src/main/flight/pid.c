@@ -1208,9 +1208,15 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
     // input / excitation shaping
     float chirpFiltered  = phaseCompApply(&pidRuntime.chirpFilter, chirp);
 
-    // ToDo: check if this can be reconstructed offline for rotating filter and if so, remove the debug
-    // fit (0...2*pi) into int16_t (-32768 to 32767)
+    // debug channels for offline system identification / autotune analysis
+    // 0: sinarg phase (0…2π scaled to ±32k) — enables offline chirp signal reconstruction
+    // 1: active chirp axis (0 = roll, 1 = pitch, 2 = yaw, -1 = inactive)
+    // 2: instantaneous chirp frequency in deci-Hz — maps time to frequency for spectral analysis
+    // 3: raw chirp excitation × 1000 (before phase comp filter) — reference signal for cross-correlation
     DEBUG_SET(DEBUG_CHIRP, 0, lrintf(5.0e3f * sinarg));
+    DEBUG_SET(DEBUG_CHIRP, 1, FLIGHT_MODE(CHIRP_MODE) ? chirpAxis : -1);
+    DEBUG_SET(DEBUG_CHIRP, 2, lrintf(10.0f * pidRuntime.chirp.fchirp));
+    DEBUG_SET(DEBUG_CHIRP, 3, lrintf(1.0e3f * chirp));
 
 #endif // USE_CHIRP
 
@@ -1400,7 +1406,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
                 dMaxMultiplier = pt2FilterApply(&pidRuntime.dMaxLowpass[axis], dMaxMultiplier);
                 // limit the gain to the fraction that DMax is greater than Min
                 dMaxMultiplier = MIN(dMaxMultiplier, pidRuntime.dMaxPercent[axis]);
-                if (debugMode == DEBUG_D_MAX && axis == gyro.gyroDebugAxis) {
+                if (debugMode == DEBUG_D_MAX && (int)axis == gyro.gyroDebugAxis) {
                     DEBUG_SET(DEBUG_D_MAX, 0, lrintf(dMaxGyroFactor * 100));
                     DEBUG_SET(DEBUG_D_MAX, 1, lrintf(dMaxSetpointFactor * 100));
                     DEBUG_SET(DEBUG_D_MAX, 2, lrintf(pidRuntime.pidCoefficient[axis].Kd * dMaxMultiplier * 10 / DTERM_SCALE)); // effective Kd after Dmax boost

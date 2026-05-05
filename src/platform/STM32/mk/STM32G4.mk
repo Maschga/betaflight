@@ -42,6 +42,7 @@ STDPERIPH_SRC   = \
             stm32g4xx_hal_uart.c \
             stm32g4xx_hal_uart_ex.c \
             stm32g4xx_ll_dma.c \
+            stm32g4xx_ll_i2c.c \
             stm32g4xx_ll_spi.c \
             stm32g4xx_ll_usart.c \
             stm32g4xx_ll_rcc.c \
@@ -128,8 +129,9 @@ MCU_COMMON_SRC = \
             drivers/bus_quadspi.c \
             drivers/dshot_bitbang_decode.c \
             STM32/adc_stm32g4xx.c \
-            STM32/bus_i2c_hal_init.c \
-            STM32/bus_i2c_hal.c \
+            STM32/can_stm32g4xx.c \
+            STM32/bus_i2c_ll_init.c \
+            STM32/bus_i2c_ll.c \
             STM32/bus_spi_ll.c \
             STM32/bus_quadspi_hal.c \
             STM32/debug.c \
@@ -156,6 +158,8 @@ MCU_COMMON_SRC = \
             drivers/serial_escserial.c \
             STM32/startup/system_stm32g4xx.c
 
+LIB_SUBMODULES += $(DRONECAN_LIB_DIR)
+
 # G4's MSC use the same driver layer file with F7
 MSC_SRC = \
             drivers/usb_msc_common.c \
@@ -173,7 +177,7 @@ SPEED_OPTIMISED_SRC += \
 
 SIZE_OPTIMISED_SRC += \
             drivers/bus_i2c_timing.c \
-            STM32/bus_i2c_hal_init.c \
+            STM32/bus_i2c_ll_init.c \
             STM32/serial_usb_vcp.c \
             drivers/serial_escserial.c
 
