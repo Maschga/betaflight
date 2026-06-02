@@ -65,6 +65,7 @@ ROOT            := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 PLATFORM_DIR	:= $(ROOT)/src/platform
 SRC_DIR         := $(ROOT)/src/main
 LIB_MAIN_DIR    := $(ROOT)/lib/main
+LIB_MODULES_DIR := $(ROOT)/lib/modules
 OBJECT_DIR      := $(ROOT)/obj/main
 BIN_DIR         := $(ROOT)/obj
 CMSIS_DIR       := $(ROOT)/lib/main/CMSIS
@@ -72,9 +73,9 @@ INCLUDE_DIRS    := $(SRC_DIR)
 
 # Auto-hydrate submodules from .gitmodules that are not marked
 # `update = none`. Currently that's `src/config` (board configs) and
-# `lib/main/dronecan/libcanard` (DroneCAN transport). Heavy vendor SDKs
-# (pico-sdk, esp-idf, STM32H5/N6/C5, APM32F4) keep `update = none` and
-# stay opt-in through their platform-SDK hydration targets.
+# `lib/modules/dronecan/libcanard` (DroneCAN transport). Heavy vendor
+# SDKs (pico-sdk, esp-idf, STM32H5/N6/C5, APM32F4) keep `update = none`
+# and stay opt-in through their platform-SDK hydration targets.
 AUTOHYDRATE_SUBMODULES := $(shell \
     git config --file .gitmodules -l 2>/dev/null | \
     awk -F '=' '/^submodule\..*\.path=/ { \
@@ -94,7 +95,7 @@ AUTOHYDRATE_STAMPS := $(addsuffix /.git,$(AUTOHYDRATE_SUBMODULES))
 # every target; the LIB_SUBMODULES check in mk/dronecan.mk is what decides
 # whether to actually compile the sources.
 LIB_SUBMODULES  :=
-DRONECAN_LIB_DIR := lib/main/dronecan/libcanard
+DRONECAN_LIB_DIR := lib/modules/dronecan/libcanard
 
 MAKE_SCRIPT_DIR := $(ROOT)/mk
 
@@ -170,7 +171,7 @@ DFUSE-PACK  := src/utils/dfuse-pack.py
 include $(MAKE_SCRIPT_DIR)/preprocess.mk
 
 # Search path for sources
-VPATH           := $(SRC_DIR):$(LIB_MAIN_DIR):$(PLATFORM_DIR)
+VPATH           := $(SRC_DIR):$(LIB_MAIN_DIR):$(LIB_MODULES_DIR):$(PLATFORM_DIR)
 FATFS_DIR        = $(ROOT)/lib/main/FatFS
 FATFS_SRC        = $(notdir $(wildcard $(FATFS_DIR)/*.c))
 CSOURCES        := $(shell find $(SRC_DIR) -name '*.c')
@@ -549,7 +550,7 @@ define compile_file
 endef
 
 ## `paths` is a list of paths that will be replaced for checking of speed, and size optimised sources
-paths := $(SRC_DIR)/ $(LIB_MAIN_DIR)/ $(PLATFORM_DIR)/
+paths := $(SRC_DIR)/ $(LIB_MAIN_DIR)/ $(LIB_MODULES_DIR)/ $(PLATFORM_DIR)/
 subst_paths_for = $(foreach path,$(paths),$(filter-out $(1),$(subst $(path),,$(1))))
 subst_paths = $(strip $(if $(call subst_paths_for,$(1)), $(call subst_paths_for,$(1)), $(1)))
 
@@ -709,20 +710,38 @@ $(AUTOHYDRATE_STAMPS):
 	$(V1) git submodule update --init -- "$(@:/.git=)" \
 	    || { echo "submodule update failed: $(@:/.git=)"; exit 1; }
 
+# Drop .d files whose recorded source path no longer exists. The most
+# common trigger is pulling across a source-move commit (e.g. promoting
+# an embedded vendor tree to a submodule) — gcc's -MMD pinned the .o to
+# the previous path, and make then bails with "No rule to make target
+# <old-path>" before the compiler ever runs to regenerate the .d. Cheap
+# scan: just stat the first .c prereq the .d declares.
+.PHONY: clean-stale-deps
+clean-stale-deps:
+	$(V1) if [ -d "$(OBJECT_DIR)" ]; then \
+	    find "$(OBJECT_DIR)" -name '*.d' 2>/dev/null | while IFS= read -r dfile; do \
+	        src=$$(awk '{ for (i=1; i<=NF; i++) if ($$i ~ /\.c$$/) { print $$i; exit } }' "$$dfile" 2>/dev/null); \
+	        if [ -n "$$src" ] && [ ! -f "$$src" ]; then \
+	            echo "Removing stale dependency file: $$dfile (source moved: $$src)"; \
+	            $(RM) "$$dfile"; \
+	        fi; \
+	    done; \
+	fi
+
 .PHONY: binary
-binary: $(PLATFORM_SDK_STAMP) $(AUTOHYDRATE_STAMPS)
+binary: $(PLATFORM_SDK_STAMP) $(AUTOHYDRATE_STAMPS) clean-stale-deps
 	$(V1) $(MAKE) $(MAKE_PARALLEL) $(TARGET_BIN)
 
 .PHONY: hex
-hex: $(PLATFORM_SDK_STAMP) $(AUTOHYDRATE_STAMPS)
+hex: $(PLATFORM_SDK_STAMP) $(AUTOHYDRATE_STAMPS) clean-stale-deps
 	$(V1) $(MAKE) $(MAKE_PARALLEL) $(TARGET_HEX)
 
 .PHONY: uf2
-uf2: $(PLATFORM_SDK_STAMP) $(AUTOHYDRATE_STAMPS)
+uf2: $(PLATFORM_SDK_STAMP) $(AUTOHYDRATE_STAMPS) clean-stale-deps
 	$(V1) $(MAKE) $(MAKE_PARALLEL) $(TARGET_UF2)
 
 .PHONY: exe
-exe: $(AUTOHYDRATE_STAMPS)
+exe: $(AUTOHYDRATE_STAMPS) clean-stale-deps
 	$(V1) $(MAKE) $(MAKE_PARALLEL) $(TARGET_EXE)
 
 # FWO (Firmware Output) is the default output for building the firmware
