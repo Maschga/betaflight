@@ -22,11 +22,11 @@
 #pragma once
 
 #ifndef TARGET_BOARD_IDENTIFIER
-#define TARGET_BOARD_IDENTIFIER "SC59"
+#define TARGET_BOARD_IDENTIFIER "SC5A"
 #endif
 
 #ifndef USBD_PRODUCT_STRING
-#define USBD_PRODUCT_STRING     "Betaflight - STM32C591"
+#define USBD_PRODUCT_STRING     "Betaflight - STM32C5A3"
 #endif
 
 #define USE_I2C_DEVICE_1
@@ -64,6 +64,9 @@
 
 #define FLASH_PAGE_SIZE ((uint32_t)0x2000) // 8K sectors
 
+// 8 KiB matches STM32H5 — handles the default PG set plus virtual
+// sensors during bring-up. Must fit within the FLASH_CONFIG partition
+// defined in stm32_flash_c5xx_1m.ld (128 KiB at 0x08020000).
 #define EEPROM_SIZE     8192
 
 #ifndef DEFAULT_PID_PROCESS_DENOM

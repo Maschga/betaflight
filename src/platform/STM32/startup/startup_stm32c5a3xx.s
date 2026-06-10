@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
-  * @file      startup_stm32c562xx.s
-  * @brief     STM32C562xx devices vector table GCC toolchain.
+  * @file      startup_stm32c5a3xx.s
+  * @brief     STM32C5A3xx devices vector table GCC toolchain.
   *            This module performs:
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,
@@ -50,9 +50,8 @@ Reset_Handler:
   mov   sp, r0          /* set stack pointer */
 
 /* Copy the data segment initializers from flash to SRAM. Must run
- * before any C call so persistentObjectInit / SystemInit / HAL_InitTick
- * don't read uninitialised globals (e.g. uwTickFreq), which would wedge
- * HAL_RCC clock config. Same fix as startup_stm32c5a3xx.s. */
+ * before any C call so global state referenced by SystemInit /
+ * persistentObjectInit / HAL_* is real, not stack-garbage. */
   ldr r0, =_sdata
   ldr r1, =_edata
   ldr r2, =_sidata
@@ -69,7 +68,7 @@ LoopCopyDataInit:
   cmp r4, r1
   bcc CopyDataInit
 
-/* Zero fill the bss segment. */
+/* Zero fill the bss segment. Same reason as the .data copy above. */
   ldr r2, =_sbss
   ldr r4, =_ebss
   movs r3, #0
@@ -97,12 +96,12 @@ LoopForever:
   .size Reset_Handler, .-Reset_Handler
 
 /**
-  * @brief  This is the code that gets called when the processor receives an
-  *         unexpected interrupt.  This simply enters an infinite loop, preserving
-  *         the system state for examination by a debugger.
-  *
-  * @param  None
-  * @retval : None
+ * @brief  This is the code that gets called when the processor receives an
+ *         unexpected interrupt.  This simply enters an infinite loop, preserving
+ *         the system state for examination by a debugger.
+ *
+ * @param  None
+ * @retval : None
 */
   .section .text.Default_Handler,"ax",%progbits
 Default_Handler:
@@ -112,7 +111,7 @@ Infinite_Loop:
 
 /******************************************************************************
 *
-* The STM32C562xx vector table.
+* The STM32C5A3xx vector table.
 *
 ******************************************************************************/
   .section .isr_vector,"a",%progbits
@@ -218,6 +217,23 @@ g_pfnVectors:
 	.word	LPDMA2_CH1_IRQHandler             /* 79 */
 	.word	LPDMA2_CH2_IRQHandler             /* 80 */
 	.word	LPDMA2_CH3_IRQHandler             /* 81 */
+	.word	LPDMA2_CH4_IRQHandler             /* 82 */
+	.word	LPDMA2_CH5_IRQHandler             /* 83 */
+	.word	LPDMA2_CH6_IRQHandler             /* 84 */
+	.word	LPDMA2_CH7_IRQHandler             /* 85 */
+	.word	FDCAN2_IT0_IRQHandler             /* 86 */
+	.word	FDCAN2_IT1_IRQHandler             /* 87 */
+	.word	0                                 /* 88 reserved */
+	.word	TIM3_IRQHandler                   /* 89 */
+	.word	TIM4_IRQHandler                   /* 90 */
+	.word	XSPI1_IRQHandler                  /* 91 */
+	.word	SAES_IRQHandler                   /* 92 */
+	.word	PKA_IRQHandler                    /* 93 */
+	.word	ETH1_IRQHandler                   /* 94 */
+	.word	ETH1_WKUP_IRQHandler              /* 95 */
+	.word	USART6_IRQHandler                 /* 96 */
+	.word	UART7_IRQHandler                  /* 97 */
+	.word	ADC3_IRQHandler                   /* 98 */
 
   .size g_pfnVectors, .-g_pfnVectors
 
@@ -501,3 +517,51 @@ g_pfnVectors:
 
 	.weak	LPDMA2_CH3_IRQHandler
 	.thumb_set LPDMA2_CH3_IRQHandler,Default_Handler
+
+	.weak	LPDMA2_CH4_IRQHandler
+	.thumb_set LPDMA2_CH4_IRQHandler,Default_Handler
+
+	.weak	LPDMA2_CH5_IRQHandler
+	.thumb_set LPDMA2_CH5_IRQHandler,Default_Handler
+
+	.weak	LPDMA2_CH6_IRQHandler
+	.thumb_set LPDMA2_CH6_IRQHandler,Default_Handler
+
+	.weak	LPDMA2_CH7_IRQHandler
+	.thumb_set LPDMA2_CH7_IRQHandler,Default_Handler
+
+	.weak	FDCAN2_IT0_IRQHandler
+	.thumb_set FDCAN2_IT0_IRQHandler,Default_Handler
+
+	.weak	FDCAN2_IT1_IRQHandler
+	.thumb_set FDCAN2_IT1_IRQHandler,Default_Handler
+
+	.weak	TIM3_IRQHandler
+	.thumb_set TIM3_IRQHandler,Default_Handler
+
+	.weak	TIM4_IRQHandler
+	.thumb_set TIM4_IRQHandler,Default_Handler
+
+	.weak	XSPI1_IRQHandler
+	.thumb_set XSPI1_IRQHandler,Default_Handler
+
+	.weak	SAES_IRQHandler
+	.thumb_set SAES_IRQHandler,Default_Handler
+
+	.weak	PKA_IRQHandler
+	.thumb_set PKA_IRQHandler,Default_Handler
+
+	.weak	ETH1_IRQHandler
+	.thumb_set ETH1_IRQHandler,Default_Handler
+
+	.weak	ETH1_WKUP_IRQHandler
+	.thumb_set ETH1_WKUP_IRQHandler,Default_Handler
+
+	.weak	USART6_IRQHandler
+	.thumb_set USART6_IRQHandler,Default_Handler
+
+	.weak	UART7_IRQHandler
+	.thumb_set UART7_IRQHandler,Default_Handler
+
+	.weak	ADC3_IRQHandler
+	.thumb_set ADC3_IRQHandler,Default_Handler
